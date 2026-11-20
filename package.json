@@ -1,0 +1,9 @@
+{
+  "name": "color-vision-preview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulate common color-vision deficiencies on local images and color swatches in a private browser workspace.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

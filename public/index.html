@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Color Vision Preview</title><style>
+:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#0b1220;color:#e5edf8}
+*{box-sizing:border-box}body{margin:0;padding:32px;max-width:1100px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(2rem,5vw,3.5rem)}p{color:#a9b8cc;line-height:1.6}
+.panel{background:#121d31;border:1px solid #263753;border-radius:18px;padding:20px;margin:22px 0}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+label{display:grid;gap:7px;color:#b9c8da;font-size:.9rem}
+input,select,button{font:inherit;border-radius:10px;padding:11px 13px;border:1px solid #405574;background:#0d1728;color:#f8fafc}
+button{background:#2563eb;border:0;cursor:pointer;font-weight:700}button:disabled{opacity:.45;cursor:not-allowed}
+canvas{display:block;max-width:100%;max-height:520px;margin:18px auto;border-radius:12px;background:#08101d}
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.swatch{padding:18px 12px;border-radius:12px;color:#08101d;font-weight:700;text-shadow:0 1px 1px #fff8;min-height:70px}
+small{color:#94a8c3}.note{font-size:.9rem}
+</style></head><body>
+<header><div><p>LOCAL IMAGE ACCESSIBILITY TOOL</p><h1>Color Vision Preview</h1><p>Preview common color-vision simulations without uploading your image.</p></div><span>◉ PRIVATE BY DESIGN</span></header>
+<section class="panel"><div class="controls">
+<label>Choose an image<input id="file" type="file" accept="image/*"></label>
+<label>Simulation<select id="mode"><option value="normal">Normal vision</option><option value="protanopia">Protanopia approximation</option><option value="deuteranopia">Deuteranopia approximation</option><option value="tritanopia">Tritanopia approximation</option><option value="gray">Grayscale</option></select></label>
+<button id="download" disabled>Download PNG</button></div><canvas id="canvas" width="800" height="500"></canvas><small class="note">These matrix-based previews are educational approximations, not clinical simulations.</small></section>
+<section class="panel"><h2>Palette preview</h2><div id="swatches" class="swatches"></div></section>
+<script>
+const $=id=>document.getElementById(id), canvas=$("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
+let original=null;
+const colors=["#e63946","#2a9d8f","#f4a261","#4361ee","#f1fa8c","#9b5de5","#00b4d8","#f72585"];
+const matrices={
+ protanopia:[.567,.433,0,.558,.442,0,0,.242,.758],
+ deuteranopia:[.625,.375,0,.700,.300,0,0,.300,.700],
+ tritanopia:[.950,.050,0,0,.433,.567,0,.475,.525]
+};
+function transform(data,mode){
+ const m=matrices[mode];
+ for(let i=0;i<data.length;i+=4){
+  const r=data[i],g=data[i+1],b=data[i+2];
+  if(mode==="gray"){const y=.2126*r+.7152*g+.0722*b;data[i]=data[i+1]=data[i+2]=y}
+  else if(m){data[i]=m[0]*r+m[1]*g+m[2]*b;data[i+1]=m[3]*r+m[4]*g+m[5]*b;data[i+2]=m[6]*r+m[7]*g+m[8]*b}
+ }
+}
+function render(){
+ if(!original)return;
+ canvas.width=original.width;canvas.height=original.height;
+ const image=new ImageData(new Uint8ClampedArray(original.data),original.width,original.height);
+ transform(image.data,$("mode").value);ctx.putImageData(image,0,0);
+ $("download").disabled=false;
+}
+$("file").addEventListener("change",e=>{
+ const f=e.target.files[0];if(!f)return;
+ const url=URL.createObjectURL(f),img=new Image();
+ img.onload=()=>{canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;ctx.drawImage(img,0,0);original=ctx.getImageData(0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);render()};
+ img.src=url;
+});
+$("mode").addEventListener("change",render);
+$("download").addEventListener("click",()=>{const a=document.createElement("a");a.download="color-vision-preview.png";a.href=canvas.toDataURL("image/png");a.click()});
+function colorMatrix(hex,mode){
+ const n=parseInt(hex.slice(1),16),d=[n>>16,(n>>8)&255,n&255,255];transform(d,mode);return `rgb(${d[0]|0} ${d[1]|0} ${d[2]|0})`;
+}
+function drawSwatches(){const mode=$("mode").value;$("swatches").innerHTML="";colors.forEach(c=>{const el=document.createElement("div");el.className="swatch";el.style.background=colorMatrix(c,mode);el.textContent=c;$("swatches").append(el)})}
+$("mode").addEventListener("change",drawSwatches);drawSwatches();
+</script></body></html>
